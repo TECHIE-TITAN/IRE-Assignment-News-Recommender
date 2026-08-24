@@ -1,0 +1,20 @@
+{
+  "dataset": "mind",
+  "n_articles": 104151,
+  "n_interactions": 4979946,
+  "n_click_history_rows": 3958501,
+  "split_counts": {
+    "test": 2370727,
+    "train": 2232748,
+    "val": 376471
+  },
+  "split_boundaries": {
+    "train_max_time": "2019-11-14 23:59:59",
+    "val_min_time": "2019-11-15 00:00:00",
+    "val_max_time": "2019-11-15 23:59:43",
+    "test_min_time": "2019-11-16 00:00:05"
+  },
+  "n_users_with_val_features": 711222,
+  "n_users_with_test_features": 750434,
+  "leakage_check": "passed"
+}

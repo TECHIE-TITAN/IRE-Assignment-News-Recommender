@@ -1,0 +1,292 @@
+{
+  "n_val_impressions": 376471,
+  "cold_start_threshold": 5,
+  "k_beyond": 10,
+  "n_boot": 1000,
+  "slice_counts": {
+    "cold": 52724,
+    "warm": 323747
+  },
+  "results": {
+    "bm25": {
+      "overall": {
+        "auc": {
+          "mean": 0.5581004277932933,
+          "ci_low": 0.5571725154765417,
+          "ci_high": 0.5590221514014235,
+          "n": 376471
+        },
+        "mrr": {
+          "mean": 0.30023942598489783,
+          "ci_low": 0.29921588473339794,
+          "ci_high": 0.3012295376616796,
+          "n": 376471
+        },
+        "ndcg5": {
+          "mean": 0.27640726152463785,
+          "ci_low": 0.2753194346030212,
+          "ci_high": 0.2774768248173425,
+          "n": 376471
+        },
+        "ndcg10": {
+          "mean": 0.3380545544295233,
+          "ci_low": 0.33699982862765454,
+          "ci_high": 0.33910739204627716,
+          "n": 376471
+        },
+        "diversity": {
+          "mean": 0.8470710686384505,
+          "ci_low": 0.8469141251948706,
+          "ci_high": 0.8472343568907611,
+          "n": 376471
+        },
+        "novelty": {
+          "mean": 18.032608474721336,
+          "ci_low": 18.025160093400487,
+          "ci_high": 18.04041474755598,
+          "n": 376471
+        },
+        "coverage": {
+          "point_estimate": 0.04676863400255398,
+          "mean": 0.04315240372151972,
+          "ci_low": 0.04275499035054872,
+          "ci_high": 0.043552150243396606,
+          "n": 376471,
+          "note": "point_estimate is coverage on the full evaluated set (the number to report); mean/ci_low/ci_high are the with-replacement resampling distribution, which is systematically lower -- see docstring."
+        }
+      },
+      "cold": {
+        "auc": {
+          "mean": 0.5213470588984144,
+          "ci_low": 0.5190096408847843,
+          "ci_high": 0.5235764213889352,
+          "n": 52724
+        },
+        "mrr": {
+          "mean": 0.29175710636751867,
+          "ci_low": 0.2889941115224189,
+          "ci_high": 0.2942511075554158,
+          "n": 52724
+        },
+        "ndcg5": {
+          "mean": 0.28089655464122326,
+          "ci_low": 0.2777437542597216,
+          "ci_high": 0.28375569950297685,
+          "n": 52724
+        },
+        "ndcg10": {
+          "mean": 0.3421062549052213,
+          "ci_low": 0.33918511265546664,
+          "ci_high": 0.3447661951308551,
+          "n": 52724
+        },
+        "diversity": {
+          "mean": 0.8595189636150603,
+          "ci_low": 0.8590960349803425,
+          "ci_high": 0.8599262754924918,
+          "n": 52724
+        },
+        "novelty": {
+          "mean": 18.206124480728207,
+          "ci_low": 18.1848995269402,
+          "ci_high": 18.22916164082368,
+          "n": 52724
+        },
+        "coverage": {
+          "point_estimate": 0.03125270040614108,
+          "mean": 0.027378988199825254,
+          "ci_low": 0.026951253468521667,
+          "ci_high": 0.02780578198961124,
+          "n": 52724,
+          "note": "point_estimate is coverage on the full evaluated set (the number to report); mean/ci_low/ci_high are the with-replacement resampling distribution, which is systematically lower -- see docstring."
+        }
+      },
+      "warm": {
+        "auc": {
+          "mean": 0.5640859183819737,
+          "ci_low": 0.5630926499156319,
+          "ci_high": 0.5651157531831682,
+          "n": 323747
+        },
+        "mrr": {
+          "mean": 0.3016208189229226,
+          "ci_low": 0.30053539893137465,
+          "ci_high": 0.30268518349402423,
+          "n": 323747
+        },
+        "ndcg5": {
+          "mean": 0.2756761551660343,
+          "ci_low": 0.27457232836423057,
+          "ci_high": 0.27684488752447417,
+          "n": 323747
+        },
+        "ndcg10": {
+          "mean": 0.33739471246687747,
+          "ci_low": 0.3363209789236518,
+          "ci_high": 0.3384887574308414,
+          "n": 323747
+        },
+        "diversity": {
+          "mean": 0.8450438596921226,
+          "ci_low": 0.8448732925658562,
+          "ci_high": 0.8452254671143106,
+          "n": 323747
+        },
+        "novelty": {
+          "mean": 18.004350427849232,
+          "ci_low": 17.996046095173767,
+          "ci_high": 18.012103304663054,
+          "n": 323747
+        },
+        "coverage": {
+          "point_estimate": 0.044800337970830814,
+          "mean": 0.0413289454733992,
+          "ci_low": 0.04094055745984196,
+          "ci_high": 0.0416993115764611,
+          "n": 323747,
+          "note": "point_estimate is coverage on the full evaluated set (the number to report); mean/ci_low/ci_high are the with-replacement resampling distribution, which is systematically lower -- see docstring."
+        }
+      }
+    },
+    "lsa": {
+      "overall": {
+        "auc": {
+          "mean": 0.5590797842800187,
+          "ci_low": 0.558102075938252,
+          "ci_high": 0.5600253915661539,
+          "n": 376471
+        },
+        "mrr": {
+          "mean": 0.28443689943944334,
+          "ci_low": 0.2834738955996612,
+          "ci_high": 0.28549500975102043,
+          "n": 376471
+        },
+        "ndcg5": {
+          "mean": 0.2637159168711469,
+          "ci_low": 0.2626840734507807,
+          "ci_high": 0.26479330672810164,
+          "n": 376471
+        },
+        "ndcg10": {
+          "mean": 0.32653418006578594,
+          "ci_low": 0.3255722981813083,
+          "ci_high": 0.3275751596439542,
+          "n": 376471
+        },
+        "diversity": {
+          "mean": 0.8097798539247012,
+          "ci_low": 0.8095349009208547,
+          "ci_high": 0.8100317165140667,
+          "n": 376471
+        },
+        "novelty": {
+          "mean": 18.226479763650637,
+          "ci_low": 18.219133712878413,
+          "ci_high": 18.23401409129655,
+          "n": 376471
+        },
+        "coverage": {
+          "point_estimate": 0.043705773348311584,
+          "mean": 0.04000215072346881,
+          "ci_low": 0.03961531814384884,
+          "ci_high": 0.04038367370452516,
+          "n": 376471,
+          "note": "point_estimate is coverage on the full evaluated set (the number to report); mean/ci_low/ci_high are the with-replacement resampling distribution, which is systematically lower -- see docstring."
+        }
+      },
+      "cold": {
+        "auc": {
+          "mean": 0.5267807097437323,
+          "ci_low": 0.5241972871868729,
+          "ci_high": 0.5290851671188951,
+          "n": 52724
+        },
+        "mrr": {
+          "mean": 0.28897024479163813,
+          "ci_low": 0.2862788144912883,
+          "ci_high": 0.2915692392029106,
+          "n": 52724
+        },
+        "ndcg5": {
+          "mean": 0.2804573480394411,
+          "ci_low": 0.2774973795723345,
+          "ci_high": 0.2833020640666193,
+          "n": 52724
+        },
+        "ndcg10": {
+          "mean": 0.34158625760649053,
+          "ci_low": 0.3389368661293149,
+          "ci_high": 0.34428696439947315,
+          "n": 52724
+        },
+        "diversity": {
+          "mean": 0.8415711412476695,
+          "ci_low": 0.84101343523199,
+          "ci_high": 0.8421220758961583,
+          "n": 52724
+        },
+        "novelty": {
+          "mean": 18.233577031114105,
+          "ci_low": 18.212940845560215,
+          "ci_high": 18.2561437200932,
+          "n": 52724
+        },
+        "coverage": {
+          "point_estimate": 0.030321360332594024,
+          "mean": 0.026484844120555733,
+          "ci_low": 0.02608688346727348,
+          "ci_high": 0.026874681952165604,
+          "n": 52724,
+          "note": "point_estimate is coverage on the full evaluated set (the number to report); mean/ci_low/ci_high are the with-replacement resampling distribution, which is systematically lower -- see docstring."
+        }
+      },
+      "warm": {
+        "auc": {
+          "mean": 0.5643398682525381,
+          "ci_low": 0.5633049308229978,
+          "ci_high": 0.5652966316546648,
+          "n": 323747
+        },
+        "mrr": {
+          "mean": 0.2836986189292019,
+          "ci_low": 0.28267755430692676,
+          "ci_high": 0.28469975775687395,
+          "n": 323747
+        },
+        "ndcg5": {
+          "mean": 0.26098948167045893,
+          "ci_low": 0.25989764874565285,
+          "ci_high": 0.26210466612749156,
+          "n": 323747
+        },
+        "ndcg10": {
+          "mean": 0.32408286550146226,
+          "ci_low": 0.3230685714983649,
+          "ci_high": 0.3251716660820104,
+          "n": 323747
+        },
+        "diversity": {
+          "mean": 0.8046024659247624,
+          "ci_low": 0.8043312171130972,
+          "ci_high": 0.8048813318170644,
+          "n": 323747
+        },
+        "novelty": {
+          "mean": 18.225323934161125,
+          "ci_low": 18.21770676461484,
+          "ci_high": 18.23314474781603,
+          "n": 323747
+        },
+        "coverage": {
+          "point_estimate": 0.04107497767664257,
+          "mean": 0.037590604026845637,
+          "ci_low": 0.037157588501310596,
+          "ci_high": 0.037983552726330035,
+          "n": 323747,
+          "note": "point_estimate is coverage on the full evaluated set (the number to report); mean/ci_low/ci_high are the with-replacement resampling distribution, which is systematically lower -- see docstring."
+        }
+      }
+    }
+  }
+}

@@ -1,15 +1,16 @@
 """Builds the article-feature and user-feature tables that make up the
-"feature store" deliverable.
+"feature store" deliverable (Q1.4).
 
 Leakage discipline:
   - Article popularity stats are computed strictly from the `train` split's
     interactions, never val/test, so article features don't encode
     information from the future relative to when they'd be used at serving
-    time.
+    time (Q9: "report metrics with and without features unavailable at
+    serving time").
   - User features are snapshotted per split boundary: `user_features_val` is
-    built only from clicks strictly before val starts (i.e. train-period
-    clicks), and `user_features_test` only from clicks strictly before test
-    starts (i.e. train+val-period clicks). `pipeline.split.assert_no_future_click_leakage`
+    built only from clicks strictly before val starts (train-period clicks),
+    and `user_features_test` only from clicks strictly before test starts
+    (train+val-period clicks). `pipeline.split.assert_no_future_click_leakage`
     is re-checked inside `build_user_features` as a defense-in-depth guard on
     top of the caller's own filtering.
 """
@@ -24,13 +25,12 @@ def _word_count(series):
 
 
 def build_article_features(articles, train_interactions):
-    """`embedding` is left as a null placeholder column here — Q3 populates
-    it later by computing/loading article embeddings; Q1's feature store just
-    reserves the slot."""
+    """`embedding` is left as a null placeholder column here -- Q3 populates
+    real (TF-IDF+SVD) article embeddings separately; this just reserves the
+    slot so the schema is stable."""
     feats = articles.copy()
     feats["n_title_words"] = _word_count(feats["title"])
     feats["n_abstract_words"] = _word_count(feats["abstract"])
-    feats["n_body_words"] = _word_count(feats["body"])
     feats["n_entities"] = feats["entities"].apply(lambda e: len(e) if isinstance(e, list) else 0)
 
     exploded = train_interactions[["candidate_article_ids", "labels"]].explode(

@@ -1,5 +1,19 @@
-data/
-*.zip
+ebnerd_demo/
+ebnerd_small/
+MINDlarge_dev/
+MINDlarge_test/
+MINDlarge_train/
+MINDsmall_dev/
+MINDsmall_train/
+ebnerd_demo.zip
+ebnerd_small.zip
+MINDlarge_dev.zip
+MINDlarge_test.zip
+MINDlarge_train.zip
+MINDsmall_dev.zip
+MINDsmall_train.zip
+prediction.txt
+processed/
 *.pt
 *.ckpt
 __pycache__/
@@ -9,3 +23,4 @@ __pycache__/
 .DS_Store
 output/
 .pytest_cache/
+.DS_Store

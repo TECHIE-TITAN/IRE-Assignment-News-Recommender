@@ -1,15 +1,18 @@
-"""Load MIND (MINDsmall_train / MINDsmall_dev) raw files and map them into the
-unified schema defined in pipeline/schema.py.
+"""Load raw MIND TSV files and map them into the unified schema defined in
+pipeline/schema.py.
 
 MIND quirks that shape this loader:
-  - `news.tsv` has no article body field -> unified `body` is always None.
-  - `behaviors.tsv`'s `history` field has no per-click timestamps, so it cannot
-    be used to build a timestamped click-history table. Instead, timestamped
-    clicks are derived from positive-labelled impression candidates (a click
-    on a shown candidate has a known timestamp: the impression time).
-  - train/dev news_id and user_id namespaces are shared (no remapping needed);
-    impression_id is only unique *within* a file, so it gets a dataset+source
-    prefix when train and dev are concatenated.
+  - `news.tsv` has no article body field -> unified schema has no `body` col.
+  - `behaviors.tsv`'s `history` field has no per-click timestamps, so it
+    cannot be used to build a timestamped click-history table. Instead,
+    timestamped clicks are derived from positive-labelled impression
+    candidates (a click on a shown candidate has a known timestamp: the
+    impression time).
+  - news_id / user_id namespaces are shared across train/dev/test (no
+    remapping needed). impression_id is only unique *within* a file, so it
+    gets a split-name prefix when files are concatenated.
+  - The large test split's `impressions` field carries no `-0`/`-1` labels
+    (just bare news IDs) since it's the Codabench-held-out set.
 """
 
 import json
@@ -24,13 +27,13 @@ NEWS_COLS = ["news_id", "category", "subcategory", "title", "abstract",
 BEH_COLS = ["impression_id", "user_id", "time", "history", "impressions"]
 
 
-def _load_news_raw(dir_path):
+def load_news_raw(dir_path):
     fp = os.path.join(dir_path, "news.tsv")
     return pd.read_csv(fp, sep="\t", header=None, names=NEWS_COLS, quoting=3,
                         na_values=[""], keep_default_na=True)
 
 
-def _load_behaviors_raw(dir_path):
+def load_behaviors_raw(dir_path):
     fp = os.path.join(dir_path, "behaviors.tsv")
     df = pd.read_csv(fp, sep="\t", header=None, names=BEH_COLS, quoting=3,
                       na_values=[""], keep_default_na=True)
@@ -63,85 +66,93 @@ def _parse_history(hist):
 
 
 def _parse_impressions(imp):
-    """Returns (candidate_ids, labels) as two parallel lists."""
+    """Returns (candidate_ids, labels) as two parallel lists. `labels`
+    entries are None for the unlabeled test split (bare news IDs, no
+    "-0"/"-1" suffix -- MIND news IDs never contain "-", so this split is
+    unambiguous)."""
     if pd.isna(imp):
         return [], []
     cand_ids, labels = [], []
     for tok in str(imp).split():
-        if "-" not in tok:
-            continue
-        nid, lab = tok.rsplit("-", 1)
-        try:
-            lab = int(lab)
-        except ValueError:
-            continue
+        if "-" in tok:
+            nid, lab = tok.rsplit("-", 1)
+            try:
+                lab = int(lab)
+            except ValueError:
+                continue
+        else:
+            nid, lab = tok, None
         cand_ids.append(nid)
         labels.append(lab)
     return cand_ids, labels
 
 
-def load_mind_articles(train_dir, dev_dir):
-    """Union of train + dev news.tsv, deduplicated by news_id, mapped to the
-    unified article schema."""
-    news = pd.concat([_load_news_raw(train_dir), _load_news_raw(dev_dir)], ignore_index=True)
-    news = news.drop_duplicates(subset="news_id", keep="first")
-
-    entities = (news["title_entities"].apply(_extract_entity_ids) if "title_entities" in news
-                else pd.Series([[]] * len(news)))
+def articles_from_news_df(news):
+    """Maps a raw news.tsv-shaped dataframe to the unified article schema."""
+    title_entities = news["title_entities"].apply(_extract_entity_ids)
     abstract_entities = news["abstract_entities"].apply(_extract_entity_ids)
     entities = [sorted(set(a) | set(b), key=(a + b).index) if (a or b) else []
-                for a, b in zip(entities, abstract_entities)]
+                for a, b in zip(title_entities, abstract_entities)]
 
     out = pd.DataFrame({
-        "dataset": "mind",
         "article_id": news["news_id"],
         "title": news["title"],
         "abstract": news["abstract"],
-        "body": None,
         "category": news["category"],
         "subcategory": news["subcategory"],
         "entities": entities,
         "url": news["url"],
-        "published_time": pd.NaT,
     })
     return out[ARTICLE_COLUMNS]
 
 
-def load_mind_interactions(train_dir, dev_dir):
-    """Concatenation of train + dev behaviors.tsv mapped to the unified
-    interactions schema. `split` is left unset (filled in later by
-    pipeline.split on the merged, time-sorted pool)."""
-    frames = []
-    for source, dir_path in [("train", train_dir), ("dev", dev_dir)]:
-        beh = _load_behaviors_raw(dir_path)
-        history = beh["history"].apply(_parse_history)
-        cand_labels = beh["impressions"].apply(_parse_impressions)
-        candidates = cand_labels.apply(lambda cl: cl[0])
-        labels = cand_labels.apply(lambda cl: cl[1])
+def load_mind_articles(*dir_paths):
+    """Union of news.tsv across the given directories, deduplicated by
+    article_id, mapped to the unified article schema."""
+    news = pd.concat([load_news_raw(d) for d in dir_paths], ignore_index=True)
+    news = news.drop_duplicates(subset="news_id", keep="first")
+    return articles_from_news_df(news)
 
-        frames.append(pd.DataFrame({
-            "dataset": "mind",
-            "impression_id": "mind_" + source + "_" + beh["impression_id"].astype(str),
-            "user_id": beh["user_id"],
-            "impression_time": beh["time"],
-            "history_article_ids": history,
-            "candidate_article_ids": candidates,
-            "labels": labels,
-            "split": None,
-        }))
-    out = pd.concat(frames, ignore_index=True)
+
+def interactions_from_behaviors_df(beh, split):
+    history = beh["history"].apply(_parse_history)
+    cand_labels = beh["impressions"].apply(_parse_impressions)
+    candidates = cand_labels.apply(lambda cl: cl[0])
+    labels = cand_labels.apply(lambda cl: cl[1])
+
+    out = pd.DataFrame({
+        "impression_id": f"{split}_" + beh["impression_id"].astype(str),
+        "user_id": beh["user_id"],
+        "impression_time": beh["time"],
+        "history_article_ids": history,
+        "candidate_article_ids": candidates,
+        "labels": labels,
+        "split": split,
+    })
     return out[INTERACTION_COLUMNS]
 
 
+def load_mind_interactions(split_dirs):
+    """`split_dirs`: dict mapping split name ("train"/"val"/"test") -> raw
+    directory path. Split is assigned directly from which file a row came
+    from (MIND's own train/dev/large_test files are already temporally
+    disjoint -- see pipeline/split.py for the boundary-monotonicity check
+    that verifies this)."""
+    frames = []
+    for split, dir_path in split_dirs.items():
+        beh = load_behaviors_raw(dir_path)
+        frames.append(interactions_from_behaviors_df(beh, split))
+    return pd.concat(frames, ignore_index=True)[INTERACTION_COLUMNS]
+
+
 def derive_mind_click_history(interactions):
-    """MIND has no separately-timestamped click history, so the only
-    timestamped clicks available are positive-labelled impression candidates:
-    a click on a shown candidate has a known timestamp (the impression time).
-    Returns long-format rows: dataset, user_id, article_id, click_time."""
-    df = interactions[["user_id", "impression_time", "candidate_article_ids", "labels"]].copy()
+    """The only timestamped clicks available in MIND are positive-labelled
+    impression candidates: a click on a shown candidate has a known
+    timestamp (the impression time). Unlabeled (test-split) rows have
+    labels == None, which naturally drops out of the `labels == 1` filter,
+    so this is safe to call on the full train+val+test interactions table."""
+    df = interactions[["user_id", "impression_time", "candidate_article_ids", "labels", "split"]].copy()
     df = df.explode(["candidate_article_ids", "labels"])
     df = df[df["labels"] == 1]
     ch = df.rename(columns={"candidate_article_ids": "article_id", "impression_time": "click_time"})
-    ch = ch[["user_id", "article_id", "click_time"]].reset_index(drop=True)
-    ch.insert(0, "dataset", "mind")
-    return ch
+    return ch[["user_id", "article_id", "click_time", "split"]].reset_index(drop=True)
