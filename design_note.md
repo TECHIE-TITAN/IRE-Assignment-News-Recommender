@@ -298,15 +298,101 @@ trusting a k1/b choice is the right call, not an optional nicety.
 
 ---
 
+## Revision 8 — MRR correctness fix, BM25 entity boost, BM25+semantic fusion, speed
+
+Triggered by asking "how do we improve on 0.5872 (SBERT+FAISS)" and being
+pointed at MIND's actual official scorer (`mind_evaluate.txt`) to check our
+own metrics against it.
+
+**MRR correctness fix, found by reading the official scorer closely.**
+`mind_evaluate.txt`'s `mrr_score` averages reciprocal rank over *every*
+clicked candidate in an impression (`sum(y_true[i]/rank_i) / sum(y_true)`),
+not just the best-ranked one. `retrieval/ranking_metrics.py`'s `mrr_score`
+only ever used the first hit's reciprocal rank -- identical to the official
+formula for MIND's typical single-click impressions (which is why this
+went unnoticed through every prior Q4 run), but wrong for any impression
+with multiple clicks. Fixed to the official multi-click-averaging formula;
+verified against a from-scratch reimplementation of the official function
+across 3,000 randomized trials (continuous, no-tie scores, matching the
+real rank-derived-score scenario): exact match, 0 diff.
+
+**BM25 entity-overlap boost (new lexical-side signal, `retrieval/bm25.py`).**
+BM25F was purely lexical -- it never used the Wikidata entities the
+pipeline already parses (only the semantic side's entity fusion did).
+`BM25Index.fit()` now optionally takes `entities` per doc; `score_candidates`
+optionally takes `query_entity_weights` (same recency-weighted-dict
+construction as query terms, via the new `text_utils.weighted_query_entities`)
+and adds `entity_boost * (entity overlap)` on top of the lexical score --
+a candidate sharing an entity with a recently-clicked article gets a boost
+independent of whether it shares any *words* with it. New
+`--bm25_entity_boost` hyperparameter (default 1.0), persisted in config.json
+like the others.
+
+**BM25F + semantic fusion (`retrieval/fusion.py`, new).** Score-level
+fusion was discussed and deferred twice before (when the methods were
+closer in quality, fusion looked less promising); revisited now that Q4 has
+shown a wide, consistent gap. Min-max normalizes each scorer's output
+*within the impression's own candidate list* (raw BM25 sums and cosine
+similarities aren't on comparable scales) before a weighted average
+(`alpha` = semantic weight, default 0.7, reflecting the measured AUC gap --
+not assumed to transfer to EB-NeRD or any other dataset without checking).
+Wired in as a third method in `evaluate_ranking.py` (validate before
+trusting) and as a third `--method fusion`/`all` output in
+`generate_predictions.py`.
+
+**Speed, two changes:**
+1. `BM25Index.search_topk` (`retrieval/bm25.py`) -- exact top-K retrieval via
+   the same sparse-sparse matmul `score_batch_full` already used, but
+   consumed row-by-row (only nonzero entries touched) instead of via
+   `.todense()` + a full-width `np.argpartition`. `evaluate_retrieval.py`'s
+   BM25 side now uses this exclusively, mirroring the FAISS speedup the
+   semantic side already had (Revision 6) -- previously only SBERT got that
+   treatment, leaving BM25 as Q2/Q3's actual bottleneck. Batch size default
+   raised 500→2000 since memory is now bounded by matched-term sparsity, not
+   `batch × n_docs`. Verified against the old dense path on a synthetic
+   corpus: 0 mismatches across all comparable (query, K) pairs. One
+   deliberate behavior change, documented in the method's docstring: a query
+   with fewer than K lexically-matching docs now reports "not found" for
+   the remaining slots rather than `score_batch_full`'s old arbitrary
+   zero-score tie-break -- arguably more correct, not just faster.
+2. **Multiprocessing for `generate_predictions.py`'s per-impression loop**
+   (the real bottleneck at 2.37M+ impressions -- embarrassingly parallel,
+   each impression scored independently). `multiprocessing.Pool` with an
+   `initializer` that receives the already-fit `bm25`/`semantic` index
+   objects *once* per worker at pool startup (not re-fit, not re-sent per
+   task); `pool.imap` over impression sub-batches preserves output order.
+   Verified end-to-end on a synthetic corpus (300 impressions, entity boost
+   + fusion both active, 4 workers): output byte-for-byte identical to a
+   single-process reference run. Caught one test-harness gotcha along the
+   way (not a bug in the shipped script): macOS's default `spawn` start
+   method re-imports `__main__` in every worker, which fails if the "main
+   script" is a stdin heredoc rather than a real file -- irrelevant to the
+   actual script (already correctly guarded by `if __name__ ==
+   "__main__":`), but worth knowing if this pattern gets reused elsewhere.
+
+**Deliberately not done this revision** (explicitly out of scope per this
+round's instructions): no robustness work (timeouts, retries, checkpointing
+-- all previously identified, all skipped on request), no bigger SBERT
+model (trades directly against the speed goal), no field-weight/entity_weight
+tuning sweep, no stemming, no multiprocessing for
+`generate_predictions_ebnerd.py` (this revision was scoped to MIND; the
+shared `retrieval/`-level changes apply to EB-NeRD too since it reuses the
+same modules, but the new multiprocessing/fusion output wiring is
+MIND-script-only for now).
+
+---
+
 ## Currently open / not yet done
 
-- `data/reports/mind_retrieval_eval.json` (Q2/Q3 full-corpus recall@K)
-  still holds **Revision 2** numbers (large-scale, pre-Revision-3
-  algorithm) — the Revision 3+4+5 combined re-run was interrupted and not
-  yet redone.
+- `data/reports/mind_retrieval_eval.json` / `mind_ranking_eval.json` don't
+  yet reflect Revision 8's entity boost + fusion -- re-run
+  `evaluate_retrieval.py`/`evaluate_ranking.py` to refresh them.
 - No isolated measurement of Revision 3's algorithm changes alone (without
   Revision 4's tuning) at large scale — see the caveat in Revision 3.
-- `README.md` has not been updated to reflect Revisions 2–5 yet.
+- `README.md` has not been updated since Revision 1 — Revisions 2–8 only
+  live in this file so far.
 - Q6 (a standalone ≤4-page design note document, distinct from this
-  changelog) and EB-NeRD are still not implemented — see `README.md`'s own
-  "Not yet done" list.
+  changelog) is still not implemented.
+- `generate_predictions_ebnerd.py` doesn't yet have the entity boost,
+  fusion output, or multiprocessing speedup Revision 8 added to the MIND
+  script -- same idea would carry over directly if wanted.

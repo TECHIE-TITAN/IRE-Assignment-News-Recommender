@@ -17,10 +17,13 @@ scripts/build_indices.py -- loading here, not re-fitting, is what
 guarantees this script and evaluate_ranking.py score against the exact
 same index instance). Writes data/reports/mind_retrieval_eval.json.
 
-If the loaded semantic index is an SBERTIndex (semantic_backend="sbert"),
-top-K retrieval goes through FAISS's native `search_topk` (no B x n_docs
-dense matrix ever materialized); if it's an LSAIndex, it falls back to the
-brute-force `score_batch_full` dense-matrix path, same as before.
+Both BM25 and the semantic side now retrieve via `search_topk`, never
+materializing a (batch x n_docs) dense matrix: BM25Index.search_topk (see
+retrieval/bm25.py) computes the same sparse-sparse matmul as before but
+consumes it row-by-row, touching only the (typically small) set of docs
+that share a term with the query; SBERTIndex.search_topk uses FAISS. Only
+LSAIndex still lacks a `search_topk` and falls back to the brute-force
+`score_batch_full` dense-matrix path.
 """
 
 import argparse
@@ -47,7 +50,10 @@ def main():
     ap.add_argument("--dataset", choices=["mind", "ebnerd"], default="mind")
     ap.add_argument("--data_dir", default="data")
     ap.add_argument("--model_dir", default=None, help="defaults to data/models/<dataset>")
-    ap.add_argument("--batch_size", type=int, default=500)
+    ap.add_argument("--batch_size", type=int, default=2000,
+                     help="raised from 500: now that BM25 also uses sparse search_topk (never densifies "
+                          "batch x n_docs), larger batches just mean fewer Python-loop/BLAS-call "
+                          "overheads, not more memory pressure")
     ap.add_argument("--recent_n", type=int, default=None,
                      help="defaults to the value baked into the loaded index's config.json")
     ap.add_argument("--recency_decay", type=float, default=None,
@@ -107,8 +113,8 @@ def main():
             bm25_query_weights.append(qw)
             recent_lists.append(list(h)[-recent_n:] if len(h) else [])
 
-        bm25_scores = bm25.score_batch_full(bm25_query_weights)
-        bm25_hits[start:end, :] = recall_hits_matrix(bm25_scores, bm25.id_to_row, batch_truths, KS)
+        _, bm25_topk_idx = bm25.search_topk(bm25_query_weights, k=min(max_k, config["n_docs"]))
+        bm25_hits[start:end, :] = recall_hits_from_topk(bm25_topk_idx, bm25.doc_ids, batch_truths, KS)
 
         user_vecs = []
         for recent in recent_lists:

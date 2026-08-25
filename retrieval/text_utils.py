@@ -64,3 +64,28 @@ def weighted_query_terms(history_ids, article_text_lookup, recent_n=20, decay=0.
         for t in set(tokenize(text)):
             terms[t] = terms.get(t, 0.0) + w
     return terms
+
+
+def weighted_query_entities(history_ids, article_entities_lookup, recent_n=20, decay=0.85):
+    """Same recency-weighted-dict construction as `weighted_query_terms`,
+    but over each recent history article's *entities* rather than its text
+    tokens -- feeds BM25Index.score_candidates's `query_entity_weights` for
+    the entity-overlap boost (see retrieval/bm25.py). `article_entities_lookup`:
+    {article_id: list[entity_id/name]}, e.g. from the unified articles
+    table's `entities` column."""
+    if len(history_ids) == 0:
+        return {}
+    recent = list(history_ids)[-recent_n:]
+    n = len(recent)
+    weights_per_article = recency_weights(n, decay)
+    ents = {}
+    for aid, w in zip(recent, weights_per_article):
+        # `.get(aid, ())` already covers the missing-key case; an `or ()`
+        # fallback on top of it would additionally trigger the same
+        # numpy-array-truthiness error as elsewhere in this codebase
+        # whenever the *found* value is a multi-element array (parquet
+        # round-trip returns list-typed columns as numpy arrays), so it's
+        # both redundant and buggy -- removed.
+        for e in set(article_entities_lookup.get(aid, ())):
+            ents[e] = ents.get(e, 0.0) + w
+    return ents

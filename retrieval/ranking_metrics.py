@@ -25,15 +25,25 @@ def auc_score(labels, scores):
 
 
 def mrr_score(labels, scores):
-    """Reciprocal rank of the first clicked candidate in score-descending
-    order. NaN when the impression has no clicked candidate."""
-    labels = np.asarray(labels)
+    """MIND's official evaluate.py (mind_evaluate.txt) formula exactly:
+    mean reciprocal rank averaged over *every* clicked candidate, not just
+    the first --
+        sum_i(y_true[i] / rank_i) / sum(y_true)
+    computed with labels reordered by score-descending rank. For the
+    (typical) single-click impression this reduces to 1/rank-of-the-click,
+    identical to the earlier first-hit-only version; it only differs (and
+    that earlier version was wrong) when an impression has multiple
+    clicked candidates, where the official metric is the *average* of
+    their reciprocal ranks, not just the best one's. NaN when the
+    impression has no clicked candidate."""
+    labels = np.asarray(labels, dtype=float)
+    total = labels.sum()
+    if total == 0:
+        return float("nan")
     order = np.argsort(-np.asarray(scores), kind="stable")
     ranked_labels = labels[order]
-    hits = np.where(ranked_labels == 1)[0]
-    if len(hits) == 0:
-        return float("nan")
-    return float(1.0 / (hits[0] + 1))
+    ranks = np.arange(1, len(ranked_labels) + 1)
+    return float(np.sum(ranked_labels / ranks) / total)
 
 
 def _dcg_at_k(ranked_labels, k):

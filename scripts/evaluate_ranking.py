@@ -42,9 +42,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from retrieval.beyond_accuracy import intra_list_diversity, novelty_score, train_popularity_prob
 from retrieval.bootstrap import bootstrap_ci_coverage, bootstrap_ci_mean
 from retrieval.build_indices import load_indices
+from retrieval.fusion import fuse_scores
 from retrieval.lsa import mean_pool_user_vector
 from retrieval.ranking_metrics import auc_score, mrr_score, ndcg_at_k
-from retrieval.text_utils import article_text, recency_weights, weighted_query_terms
+from retrieval.text_utils import article_text, recency_weights, weighted_query_entities, weighted_query_terms
 
 SCALAR_METRICS = ["auc", "mrr", "ndcg5", "ndcg10", "diversity", "novelty"]
 
@@ -62,12 +63,14 @@ def main():
     ap.add_argument("--cold_start_threshold", type=int, default=5,
                      help="impressions with fewer than this many history articles are the 'cold' slice")
     ap.add_argument("--n_boot", type=int, default=1000)
+    ap.add_argument("--fusion_alpha", type=float, default=0.7,
+                     help="fusion's semantic weight (1-alpha on lexical); see retrieval/fusion.py")
     args = ap.parse_args()
     model_dir = args.model_dir or os.path.join("data", "models", args.dataset)
 
     bm25, semantic, config = load_indices(model_dir)
     semantic_backend = config.get("semantic_backend", "lsa")
-    METHODS = ["bm25", semantic_backend]
+    METHODS = ["bm25", semantic_backend, "fusion"]
     recent_n = args.recent_n if args.recent_n is not None else config["recent_n"]
     recency_decay = args.recency_decay if args.recency_decay is not None else config["recency_decay"]
     print(f"Loaded index from {model_dir}: {config['n_docs']:,} docs, "
@@ -85,6 +88,7 @@ def main():
 
     text_lookup = dict(zip(articles["article_id"],
                             (article_text(t, a) for t, a in zip(articles["title"], articles["abstract"]))))
+    entity_lookup = dict(zip(articles["article_id"], articles["entities"]))
     pop_lookup = train_popularity_prob(article_features)
 
     # -- per-impression fields as plain lists (fast to iterate) ---------------
@@ -110,14 +114,18 @@ def main():
         recent = hist[-recent_n:] if len(hist) else []
 
         q_weights = weighted_query_terms(hist, text_lookup, recent_n=recent_n, decay=recency_decay)
-        bm25_scores = bm25.score_candidates(q_weights, cand_ids)
+        q_entities = weighted_query_entities(hist, entity_lookup, recent_n=recent_n, decay=recency_decay)
+        bm25_scores = bm25.score_candidates(q_weights, cand_ids, query_entity_weights=q_entities)
 
         embs = [semantic.get_embedding(a) for a in recent]
         w = recency_weights(len(recent), recency_decay) if len(recent) else None
         user_vec = mean_pool_user_vector(embs, weights=w)
         semantic_scores = semantic.score_candidates(user_vec, cand_ids)
 
-        for method, scores in [("bm25", bm25_scores), (semantic_backend, semantic_scores)]:
+        fusion_scores = fuse_scores(bm25_scores, semantic_scores, alpha=args.fusion_alpha)
+
+        for method, scores in [("bm25", bm25_scores), (semantic_backend, semantic_scores),
+                                ("fusion", fusion_scores)]:
             metrics[method]["auc"].append(auc_score(labels, scores))
             metrics[method]["mrr"].append(mrr_score(labels, scores))
             metrics[method]["ndcg5"].append(ndcg_at_k(labels, scores, 5))
@@ -153,6 +161,7 @@ def main():
         "index_config": config,
         "recent_n_used": recent_n,
         "recency_decay_used": recency_decay,
+        "fusion_alpha": args.fusion_alpha,
         "slice_counts": {"cold": int((slice_of == "cold").sum()), "warm": int((slice_of == "warm").sum())},
         "results": {},
     }
@@ -181,7 +190,8 @@ def main():
             report["results"][method][slice_name] = slice_report
 
     # -- print summary ----------------------------------------------------------
-    print(f"\n=== Q4 offline evaluation: BM25F vs {semantic_backend}(+entity) ===")
+    print(f"\n=== Q4 offline evaluation: BM25F(+entity) vs {semantic_backend}(+entity) vs "
+          f"fusion(alpha={args.fusion_alpha}) ===")
     for slice_name in ["overall", "cold", "warm"]:
         print(f"\n-- {slice_name} --")
         header = f"{'metric':<12}" + "".join(f"{m:>22}" for m in METHODS)

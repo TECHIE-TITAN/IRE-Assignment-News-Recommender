@@ -61,6 +61,9 @@ def main():
     ap.add_argument("--bm25_b", type=float, default=1.0, help="tuned via scripts/tune_bm25.py (MIND value; retune per dataset)")
     ap.add_argument("--bm25_title_weight", type=float, default=2.0)
     ap.add_argument("--bm25_abstract_weight", type=float, default=1.0)
+    ap.add_argument("--bm25_entity_boost", type=float, default=1.0,
+                     help="BM25's own entity-overlap boost (raw id/name overlap, works even for ebnerd "
+                          "which has no entity embeddings) -- see retrieval/bm25.py")
     ap.add_argument("--entity_weight", type=float, default=1.0)
     ap.add_argument("--no_entity_fusion", action="store_true")
     ap.add_argument("--recent_n", type=int, default=20, help="query-construction only, not index fitting")
@@ -73,14 +76,24 @@ def main():
     articles = pd.read_parquet(os.path.join(proc_dir, "articles.parquet"))
     print(f"Loaded {len(articles):,} articles (train+val corpus)")
 
+    # Resolved unconditionally for MIND (not just inside the entity-fusion
+    # branch below) so config.json always records the actual paths used,
+    # not the raw --train_dir/--val_dir CLI args -- those default to None,
+    # and a prior version of this script stored that None straight into
+    # config.json whenever entity fusion happened to be skipped for this
+    # run, which then crashed scripts/generate_predictions.py the next time
+    # it read train_dir/val_dir back out. Left as None for ebnerd, which
+    # has no equivalent entity-embedding directories and no code path that
+    # reads these back out of config.json.
+    train_dir = (args.train_dir or "data/MINDlarge_train") if args.dataset == "mind" else args.train_dir
+    val_dir = (args.val_dir or "data/MINDlarge_dev") if args.dataset == "mind" else args.val_dir
+
     if args.dataset == "ebnerd" and not args.no_entity_fusion:
         print("  entity fusion skipped: EB-NeRD ships no entity *embeddings* (unlike MIND's TransE "
               "vectors) -- ner_clusters/entity_groups are named-entity surface strings, not IDs with "
               "a matching pretrained vector table. Pass --no_entity_fusion to silence this note.")
     entity_vectors = None
     if not args.no_entity_fusion and args.dataset == "mind":
-        train_dir = args.train_dir or "data/MINDlarge_train"
-        val_dir = args.val_dir or "data/MINDlarge_dev"
         entity_vectors = load_entity_vectors(
             os.path.join(train_dir, "entity_embedding.vec"),
             os.path.join(val_dir, "entity_embedding.vec"),
@@ -96,6 +109,7 @@ def main():
         articles, semantic_backend=args.semantic_backend, lsa_components=args.lsa_components,
         sbert_model=sbert_model, sbert_batch_size=args.sbert_batch_size, sbert_device=args.sbert_device,
         bm25_k1=args.bm25_k1, bm25_b=args.bm25_b, bm25_field_weights=field_weights,
+        bm25_entity_boost=args.bm25_entity_boost,
         entity_vectors=entity_vectors, entity_weight=args.entity_weight,
     )
 
@@ -108,12 +122,13 @@ def main():
         "bm25_k1": args.bm25_k1,
         "bm25_b": args.bm25_b,
         "bm25_field_weights": field_weights,
+        "bm25_entity_boost": args.bm25_entity_boost,
         "entity_fusion": entity_vectors is not None,
         "entity_weight": args.entity_weight if entity_vectors is not None else None,
         "recent_n": args.recent_n,
         "recency_decay": args.recency_decay,
-        "train_dir": args.train_dir,
-        "val_dir": args.val_dir,
+        "train_dir": train_dir,
+        "val_dir": val_dir,
     }
     save_indices(bm25, semantic, config, out_dir)
     print(f"\nwrote {out_dir}/{{bm25.pkl, semantic.pkl, config.json}}")

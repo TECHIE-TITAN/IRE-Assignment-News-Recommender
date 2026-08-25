@@ -37,25 +37,31 @@ from retrieval.text_utils import article_text
 
 def fit_indices(articles_df, semantic_backend="lsa", lsa_components=128,
                  sbert_model=None, sbert_batch_size=256, sbert_device=None,
-                 bm25_k1=1.5, bm25_b=0.75, bm25_field_weights=None,
+                 bm25_k1=1.5, bm25_b=0.75, bm25_field_weights=None, bm25_entity_boost=1.0,
                  entity_vectors=None, entity_weight=1.0, verbose=True):
     """articles_df: DataFrame with article_id/title/abstract/entities
     columns (the unified schema from pipeline/schema.py). `entity_vectors`
     (optional): {wikidata_id: (100,) array} from
     retrieval.entity_embeddings.load_entity_vectors -- when given, the
-    semantic index is fit with content+entity fusion (Q3 improvement);
-    BM25 is unaffected by it (entity fusion is a semantic-side technique).
+    semantic index is fit with content+entity fusion (Q3 improvement).
+    `bm25_entity_boost`: BM25Index's own entity-overlap boost weight (a
+    different, lexical-side use of the same `entities` column -- see
+    retrieval/bm25.py; works even without `entity_vectors`/embeddings,
+    since it's a raw id/name overlap, not an embedding similarity).
     Returns (bm25, semantic, doc_ids)."""
     doc_ids = articles_df["article_id"].tolist()
     titles = articles_df["title"].tolist()
     abstracts = articles_df["abstract"].tolist()
+    entities = articles_df["entities"].tolist()
     texts = [article_text(t, a) for t, a in zip(titles, abstracts)]
 
     t0 = time.time()
-    bm25 = BM25Index(k1=bm25_k1, b=bm25_b, field_weights=bm25_field_weights).fit(doc_ids, titles, abstracts)
+    bm25 = BM25Index(k1=bm25_k1, b=bm25_b, field_weights=bm25_field_weights,
+                      entity_boost=bm25_entity_boost).fit(doc_ids, titles, abstracts, entities=entities)
     if verbose:
         print(f"BM25F index: {len(doc_ids):,} docs, vocab={bm25.bm25_matrix.shape[1]:,}, "
-              f"k1={bm25.k1}, b={bm25.b}, field_weights={bm25.field_weights} ({time.time()-t0:.1f}s)")
+              f"k1={bm25.k1}, b={bm25.b}, field_weights={bm25.field_weights}, "
+              f"entity_boost={bm25.entity_boost} ({time.time()-t0:.1f}s)")
 
     entity_embeddings = None
     if entity_vectors is not None:

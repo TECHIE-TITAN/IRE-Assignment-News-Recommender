@@ -1,14 +1,16 @@
 {
+  "dataset": "mind",
   "n_docs": 104151,
   "semantic_backend": "sbert",
   "lsa_components": 128,
   "sbert_model": "sentence-transformers/all-MiniLM-L6-v2",
-  "bm25_k1": 3.0,
-  "bm25_b": 1.0,
+  "bm25_k1": 2.2,
+  "bm25_b": 0.9,
   "bm25_field_weights": {
     "title": 2.0,
     "abstract": 1.0
   },
+  "bm25_entity_boost": 1.0,
   "entity_fusion": true,
   "entity_weight": 1.0,
   "recent_n": 20,

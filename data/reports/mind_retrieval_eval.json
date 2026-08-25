@@ -2,6 +2,7 @@
   "n_val_impressions": 376471,
   "n_evaluable_impressions": 376471,
   "index_config": {
+    "dataset": "mind",
     "n_docs": 104151,
     "semantic_backend": "sbert",
     "lsa_components": 128,
@@ -12,12 +13,13 @@
       "title": 2.0,
       "abstract": 1.0
     },
+    "bm25_entity_boost": 1.0,
     "entity_fusion": true,
     "entity_weight": 1.0,
     "recent_n": 20,
     "recency_decay": 0.85,
-    "train_dir": "data/MINDlarge_train",
-    "val_dir": "data/MINDlarge_dev"
+    "train_dir": null,
+    "val_dir": null
   },
   "semantic_backend": "sbert",
   "recent_n_used": 20,
@@ -31,7 +33,7 @@
   "recall_at_k": {
     "bm25": {
       "overall": {
-        "50": 0.012226705377040993,
+        "50": 0.012232017871230454,
         "100": 0.020006853117504404,
         "200": 0.030910747441369985
       },
@@ -41,7 +43,7 @@
         "200": 0.01779075942644716
       },
       "warm": {
-        "50": 0.012793940947715346,
+        "50": 0.012800118611137709,
         "100": 0.021241895677797787,
         "200": 0.033047410477934934
       }
