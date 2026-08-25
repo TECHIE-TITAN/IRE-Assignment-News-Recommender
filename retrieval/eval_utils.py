@@ -5,11 +5,19 @@ Q2 (BM25) and Q3 (LSA) evaluation runs in scripts/evaluate_retrieval.py.
 import numpy as np
 
 
-def recall_at_k_from_scores(score_matrix, doc_id_to_row, truth_article_ids_per_query, ks):
+def recall_hits_matrix(score_matrix, doc_id_to_row, truth_article_ids_per_query, ks):
     """Q2.4/Q3.4: "how many ground-truth clicked articles appear in the
-    top-K candidates" -- recall@K here is the fraction of impressions (that
-    have at least one ground-truth click present in the indexed corpus)
-    whose click lands in the top-K retrieved set.
+    top-K candidates". Returns a (B, len(ks)) array of per-impression hit
+    indicators (1.0 = the impression's clicked article landed in the top-K
+    retrieved set, 0.0 = it didn't), NaN where the impression isn't
+    evaluable (no ground-truth click, or the clicked article isn't in the
+    indexed corpus at all).
+
+    Returning per-impression hits rather than a pre-averaged scalar is what
+    lets scripts/evaluate_retrieval.py slice recall@K by an impression-level
+    attribute (cold-start vs warm, Q3.5) after the fact via np.nanmean on a
+    boolean mask over the concatenated batches, instead of only getting one
+    aggregate number.
 
     score_matrix: dense (B x n_docs) scores over the *entire* indexed corpus.
     truth_article_ids_per_query: list[set[str]] of length B, ground-truth
@@ -21,7 +29,8 @@ def recall_at_k_from_scores(score_matrix, doc_id_to_row, truth_article_ids_per_q
     kth = min(max_k, n_docs - 1)
     top_idx = np.argpartition(-score_matrix, kth=kth, axis=1)[:, :max_k + 1]
 
-    hits = {k: [] for k in ks}
+    B = score_matrix.shape[0]
+    out = np.full((B, len(ks)), np.nan)
     for qi, truths in enumerate(truth_article_ids_per_query):
         if not truths:
             continue
@@ -31,10 +40,7 @@ def recall_at_k_from_scores(score_matrix, doc_id_to_row, truth_article_ids_per_q
         row_top = top_idx[qi]
         row_scores = score_matrix[qi, row_top]
         order = row_top[np.argsort(-row_scores)]
-        for k in ks:
+        for ki, k in enumerate(ks):
             hit = bool(truth_rows & set(order[:k].tolist()))
-            hits[k].append(1.0 if hit else 0.0)
-
-    recall = {k: (float(np.mean(v)) if v else float("nan")) for k, v in hits.items()}
-    n_eval = {k: len(v) for k, v in hits.items()}
-    return recall, n_eval
+            out[qi, ki] = 1.0 if hit else 0.0
+    return out
