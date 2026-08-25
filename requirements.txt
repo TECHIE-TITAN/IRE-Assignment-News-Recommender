@@ -4,3 +4,8 @@ pyarrow>=14.0
 scipy>=1.10
 scikit-learn>=1.3
 pytest>=7.4
+
+# Optional: only needed for --semantic_backend sbert (scripts/build_indices.py).
+# Not installed by default -- sentence-transformers pulls in torch (~1GB).
+sentence-transformers>=2.7
+faiss-cpu>=1.8
