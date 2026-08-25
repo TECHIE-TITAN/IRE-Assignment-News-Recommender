@@ -1,0 +1,19 @@
+{
+  "dataset": "ebnerd",
+  "n_docs": 20738,
+  "semantic_backend": "sbert",
+  "lsa_components": 128,
+  "sbert_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "bm25_k1": 2.2,
+  "bm25_b": 0.9,
+  "bm25_field_weights": {
+    "title": 2.0,
+    "abstract": 1.0
+  },
+  "entity_fusion": false,
+  "entity_weight": null,
+  "recent_n": 20,
+  "recency_decay": 0.85,
+  "train_dir": null,
+  "val_dir": null
+}

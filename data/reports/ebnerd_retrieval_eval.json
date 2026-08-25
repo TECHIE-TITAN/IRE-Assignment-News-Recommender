@@ -1,0 +1,121 @@
+{
+  "n_val_impressions": 244647,
+  "n_evaluable_impressions": 244647,
+  "index_config": {
+    "dataset": "ebnerd",
+    "n_docs": 20738,
+    "semantic_backend": "sbert",
+    "lsa_components": 128,
+    "sbert_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "bm25_k1": 2.2,
+    "bm25_b": 0.9,
+    "bm25_field_weights": {
+      "title": 2.0,
+      "abstract": 1.0
+    },
+    "entity_fusion": false,
+    "entity_weight": null,
+    "recent_n": 20,
+    "recency_decay": 0.85,
+    "train_dir": null,
+    "val_dir": null
+  },
+  "semantic_backend": "sbert",
+  "recent_n_used": 20,
+  "recency_decay_used": 0.85,
+  "cold_start_threshold": 5,
+  "slice_counts": {
+    "overall": 244647,
+    "cold": 0,
+    "warm": 244647
+  },
+  "recall_at_k": {
+    "bm25": {
+      "overall": {
+        "50": 0.0067607614236021695,
+        "100": 0.011522724578678667,
+        "200": 0.018863914129337373
+      },
+      "cold": {
+        "50": NaN,
+        "100": NaN,
+        "200": NaN
+      },
+      "warm": {
+        "50": 0.0067607614236021695,
+        "100": 0.011522724578678667,
+        "200": 0.018863914129337373
+      }
+    },
+    "semantic": {
+      "overall": {
+        "50": 0.004381823607074683,
+        "100": 0.008526570936900922,
+        "200": 0.016750665244209
+      },
+      "cold": {
+        "50": NaN,
+        "100": NaN,
+        "200": NaN
+      },
+      "warm": {
+        "50": 0.004381823607074683,
+        "100": 0.008526570936900922,
+        "200": 0.016750665244209
+      }
+    }
+  },
+  "n_evaluable_at_k": {
+    "bm25": {
+      "overall": {
+        "50": 244647,
+        "100": 244647,
+        "200": 244647
+      },
+      "cold": {
+        "50": 0,
+        "100": 0,
+        "200": 0
+      },
+      "warm": {
+        "50": 244647,
+        "100": 244647,
+        "200": 244647
+      }
+    },
+    "semantic": {
+      "overall": {
+        "50": 244647,
+        "100": 244647,
+        "200": 244647
+      },
+      "cold": {
+        "50": 0,
+        "100": 0,
+        "200": 0
+      },
+      "warm": {
+        "50": 244647,
+        "100": 244647,
+        "200": 244647
+      }
+    }
+  },
+  "better_method_per_slice_k": {
+    "overall": {
+      "50": "bm25",
+      "100": "bm25",
+      "200": "bm25"
+    },
+    "cold": {
+      "50": "sbert",
+      "100": "sbert",
+      "200": "sbert"
+    },
+    "warm": {
+      "50": "bm25",
+      "100": "bm25",
+      "200": "bm25"
+    }
+  }
+}
