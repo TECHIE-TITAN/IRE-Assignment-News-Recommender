@@ -384,9 +384,12 @@ MIND-script-only for now).
 
 ## Currently open / not yet done
 
-- `data/reports/mind_retrieval_eval.json` / `mind_ranking_eval.json` don't
-  yet reflect Revision 8's entity boost + fusion -- re-run
-  `evaluate_retrieval.py`/`evaluate_ranking.py` to refresh them.
+- `data/reports/mind_retrieval_eval.json` / `mind_ranking_eval.json` **have
+  since been re-run and do reflect Revision 8** (`bm25_entity_boost: 1.0`,
+  a `fusion` results block present) -- fusion wins AUC/MRR/nDCG5/nDCG10
+  over both bm25 and sbert alone (e.g. overall AUC 0.5900 vs. 0.5583/0.5860),
+  consistent with the Codabench improvement to 0.5953. See `analyse.md` for
+  the full cross-stage numeric comparison.
 - No isolated measurement of Revision 3's algorithm changes alone (without
   Revision 4's tuning) at large scale — see the caveat in Revision 3.
 - `README.md` has not been updated since Revision 1 — Revisions 2–8 only
