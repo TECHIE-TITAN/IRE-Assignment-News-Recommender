@@ -99,6 +99,14 @@ multiprocessed). EB-NeRD (`ebnerd_small`) is faster throughout — a
 ├── requirements.txt                      — pinned deps (core + optional sentence-transformers/faiss)
 ├── .gitignore                            — excludes raw dataset dirs/zips, data/processed/, venv, caches
 ├── design_note.md                        — chronological changelog of design/strategy revisions
+├── design_note.pdf                       — compiled ≤4-page design note (choices, alternatives, observations, 10x scale)
+├── analyse.md                            — cross-cutting analysis of the 3 strategies (metrics, engineering, tool choices)
+├── mind_analysis.ipynb                   — exploratory MIND data analysis (not wired into the pipeline)
+├── ebnerd_analysis.ipynb                 — exploratory EB-NeRD data analysis (not wired into the pipeline)
+├── Screenshot ... 7.10.53 PM.png         — MIND leaderboard row: plain BM25+LSA submission, score 0.5805
+├── Screenshot ... 7.11.21 PM.png         — MIND leaderboard row: BM25F+tuned+SBERT submission, score 0.5872
+├── Screenshot ... 7.11.38 PM.png         — MIND leaderboard row: entity-boost+fusion submission, score 0.5953
+├── Screenshot ... 7.17.21 PM.png         — EB-NeRD submission status (predictions.zip submitted, not yet scored)
 ├── build_pipeline.py                     — entry point: raw MIND/EB-NeRD -> unified schema + feature store
 │
 ├── pipeline/
