@@ -1,0 +1,41 @@
+{
+  "dataset": "mind",
+  "config": {
+    "dataset": "mind",
+    "feature_columns": [
+      "candidate_position",
+      "history_length",
+      "history_category_match",
+      "history_subcategory_match",
+      "history_embedding_sim",
+      "article_train_ctr",
+      "article_train_impressions",
+      "article_days_since_first_seen",
+      "bm25_score",
+      "semantic_score",
+      "fusion_score"
+    ],
+    "recent_n": 20,
+    "recency_decay": 0.85,
+    "fusion_alpha": 0.7,
+    "n_estimators": 200,
+    "learning_rate": 0.05,
+    "num_leaves": 31
+  },
+  "n_train_impressions": 2232748,
+  "n_val_impressions": 376471,
+  "before_fusion_score": {
+    "auc": 0.5895809402857224,
+    "mrr": 0.27960651577667844,
+    "ndcg5": 0.2995539167139943,
+    "ndcg10": 0.3607792458244064,
+    "n_impressions_scored": 376471
+  },
+  "after_reranker": {
+    "auc": 0.6343459793400293,
+    "mrr": 0.3145385721356934,
+    "ndcg5": 0.34622516232587086,
+    "ndcg10": 0.40400846147555,
+    "n_impressions_scored": 376471
+  }
+}

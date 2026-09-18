@@ -1,0 +1,43 @@
+{
+  "dataset": "ebnerd",
+  "config": {
+    "dataset": "ebnerd",
+    "feature_columns": [
+      "candidate_position",
+      "history_length",
+      "history_category_match",
+      "history_embedding_sim",
+      "article_train_ctr",
+      "article_train_impressions",
+      "article_days_since_publish",
+      "session_prior_click_count",
+      "user_avg_past_read_time",
+      "user_avg_past_scroll_pct",
+      "bm25_score",
+      "semantic_score",
+      "fusion_score"
+    ],
+    "recent_n": 20,
+    "recency_decay": 0.85,
+    "fusion_alpha": 0.7,
+    "n_estimators": 200,
+    "learning_rate": 0.05,
+    "num_leaves": 31
+  },
+  "n_train_impressions": 232887,
+  "n_val_impressions": 244647,
+  "before_fusion_score": {
+    "auc": 0.5307134297441182,
+    "mrr": 0.33587336905361337,
+    "ndcg5": 0.3707525488129501,
+    "ndcg10": 0.451778937184581,
+    "n_impressions_scored": 244647
+  },
+  "after_reranker": {
+    "auc": 0.5054690090790095,
+    "mrr": 0.3056140370761159,
+    "ndcg5": 0.3392155103443198,
+    "ndcg10": 0.42253002606089296,
+    "n_impressions_scored": 244647
+  }
+}

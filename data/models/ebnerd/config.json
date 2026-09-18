@@ -10,6 +10,7 @@
     "title": 2.0,
     "abstract": 1.0
   },
+  "bm25_entity_boost": 1.0,
   "entity_fusion": false,
   "entity_weight": null,
   "recent_n": 20,

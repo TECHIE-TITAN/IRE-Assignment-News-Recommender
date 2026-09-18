@@ -1,0 +1,22 @@
+{
+  "dataset": "mind",
+  "feature_columns": [
+    "candidate_position",
+    "history_length",
+    "history_category_match",
+    "history_subcategory_match",
+    "history_embedding_sim",
+    "article_train_ctr",
+    "article_train_impressions",
+    "article_days_since_first_seen",
+    "bm25_score",
+    "semantic_score",
+    "fusion_score"
+  ],
+  "recent_n": 20,
+  "recency_decay": 0.85,
+  "fusion_alpha": 0.7,
+  "n_estimators": 200,
+  "learning_rate": 0.05,
+  "num_leaves": 31
+}
