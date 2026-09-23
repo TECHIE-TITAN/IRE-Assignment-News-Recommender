@@ -136,3 +136,21 @@ def days_since_first_seen(article_ids, impression_times, first_seen_times):
     valid = days >= 0
     max_age = days[valid].max() if valid.any() else 0.0
     return days.where(valid, max_age)
+
+
+def days_since_first_seen_scalar(article_id, impression_time, first_seen_times, max_age):
+    """Scalar counterpart to `days_since_first_seen`, for callers scoring
+    one candidate at a time rather than a whole vectorized Series (e.g.
+    scripts/generate_predictions.py / scripts/generate_predictions_ebnerd.py's
+    --method reranker, which streams raw, unlabeled rows one impression at
+    a time and has no DataFrame of candidates to vectorize over). Same
+    point-in-time leakage guard: an article whose first-ever appearance is
+    at/after THIS impression's own time (including never-seen-before-now,
+    i.e. not in the lookup at all) falls back to the neutral `max_age`
+    rather than a fabricated small "looks fresh" value. `first_seen_times`
+    here is a plain dict (not a Series -- these callers build one directly
+    for O(1) per-candidate lookups in a hot loop)."""
+    fs = first_seen_times.get(article_id)
+    if fs is None or pd.isna(fs) or fs >= impression_time:
+        return max_age
+    return (impression_time - fs).total_seconds() / 86400.0

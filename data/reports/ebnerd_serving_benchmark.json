@@ -1,0 +1,20 @@
+{
+  "dataset": "ebnerd",
+  "n_requests_timed": 1000,
+  "latency_ms": {
+    "mean": 30.91781382999997,
+    "p50": 29.36418750000147,
+    "p95": 37.51351075000019,
+    "p99": 55.709012739999096,
+    "max": 91.2306669999996
+  },
+  "index_memory_mb": {
+    "baseline": 143.609375,
+    "after_reranker_model": 147.3125,
+    "after_bm25_and_semantic_index": 276.1875,
+    "after_lookups_and_feature_store": 4724.953125,
+    "after_ebnerd_session_engagement_precompute": 4842.140625
+  },
+  "safe_qps_per_worker_at_target_p99": 17.950416832319835,
+  "target_p99_ms": 100.0
+}

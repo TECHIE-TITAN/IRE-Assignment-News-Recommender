@@ -1,0 +1,19 @@
+{
+  "dataset": "mind",
+  "n_requests_timed": 1000,
+  "latency_ms": {
+    "mean": 4.0864626799999115,
+    "p50": 3.5130834999996807,
+    "p95": 5.895276449996344,
+    "p99": 11.805448250001332,
+    "max": 102.8570000000002
+  },
+  "index_memory_mb": {
+    "baseline": 143.484375,
+    "after_reranker_model": 147.1875,
+    "after_bm25_and_semantic_index": 853.90625,
+    "after_lookups_and_feature_store": 6704.40625
+  },
+  "safe_qps_per_worker_at_target_p99": 84.70665228657346,
+  "target_p99_ms": 100.0
+}

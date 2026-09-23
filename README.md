@@ -91,6 +91,60 @@ Approximate runtimes (MIND, large scale): `build_pipeline.py` ~1–2 min,
 multiprocessed). EB-NeRD (`ebnerd_small`) is faster throughout — a
 ~20K-article, ~250K-impression corpus.
 
+## Assignment 2 — feature engineering, re-ranking, evaluation
+
+Builds a supervised LightGBM `LGBMRanker` re-ranker on top of Assignment
+1's retrieval scores, adding recency-weighted category/embedding-similarity
+behavioural features, article popularity/freshness, and (EB-NeRD only)
+session/engagement history. Reads only what Assignment 1's scripts already
+wrote (`data/processed/`, `data/models/<dataset>/{bm25,semantic}.pkl`) —
+run the Assignment-1 quickstart above first.
+
+**MIND:**
+
+```bash
+python scripts/build_features.py --dataset mind --split val             # Q1 behavioural features
+python scripts/build_features.py --dataset mind --split train           # ~2-2.5hrs on full MINDlarge_train
+python scripts/train_reranker.py --dataset mind                         # trains LGBMRanker, reports before/after
+python scripts/evaluate_reranker.py --dataset mind                      # cold/warm + head/tail slices, bootstrap CIs
+python scripts/ablation_reranker.py --dataset mind                      # which feature groups actually help
+python scripts/benchmark_serving.py --dataset mind                      # index memory + p99 latency + cost/QPS
+python scripts/generate_predictions.py --method reranker                # Codabench prediction file, reranker-scored
+```
+
+**EB-NeRD:**
+
+```bash
+python scripts/build_features.py --dataset ebnerd --split val
+python scripts/build_features.py --dataset ebnerd --split train
+python scripts/train_reranker.py --dataset ebnerd
+python scripts/evaluate_reranker.py --dataset ebnerd
+python scripts/ablation_reranker.py --dataset ebnerd
+python scripts/benchmark_serving.py --dataset ebnerd
+python scripts/generate_predictions_ebnerd.py --method reranker
+```
+
+Notes:
+- `train_reranker.py`/`ablation_reranker.py` accept `--train_sample_size`
+  (default unset for `train_reranker.py`, 200,000 for `ablation_reranker.py`
+  since it trains several models) to keep training tractable at MIND's
+  83.5M-candidate-row train scale; val is always scored in full.
+- `ablation_reranker.py` trains `full` / `retrieval_only` (Assignment-1
+  scores alone, no Q1 features) / each `no_<feature-group>` variant, and
+  reports a paired-bootstrap-CI drop vs. `full` for each — see
+  `data/reports/<dataset>_ablation.json`.
+- `benchmark_serving.py` measures real process RSS (not pickle file size)
+  incrementally as each index/model loads, and per-request p99 latency for
+  the full candidate-generation + re-ranking path, timed one impression at
+  a time — see `data/reports/<dataset>_serving_benchmark.json`.
+- On this project's dev machine (Apple M2/arm64), unpickling a LightGBM
+  model AFTER a FAISS-backed semantic index is already constructed in the
+  same process segfaults reliably — every A2 script above loads
+  `reranker.pkl` BEFORE the semantic index for this reason; see
+  `generate_predictions.py`'s module docstring if adapting this order
+  elsewhere (including inside `multiprocessing.Pool` worker `initargs`,
+  which unpickle as one ordered tuple).
+
 ## Project structure
 
 ```
@@ -115,7 +169,10 @@ multiprocessed). EB-NeRD (`ebnerd_small`) is faster throughout — a
 │   ├── mind.py                           — MIND TSV loaders/parsers -> unified schema
 │   ├── ebnerd.py                         — EB-NeRD parquet loaders/parsers -> unified schema
 │   ├── split.py                          — temporal split + no-future-click-leakage assertions
-│   └── feature_store.py                  — article/user feature builders (train-only CTR, leakage-safe history)
+│   ├── feature_store.py                  — article/user feature builders (train-only CTR, leakage-safe history)
+│   ├── features_common.py                — A2 Q1: shared dataset-agnostic feature math (recency weights, freshness gate)
+│   ├── features_mind.py                  — A2 Q1: MIND candidate-level behavioural feature set (8 features)
+│   └── features_ebnerd.py                — A2 Q1: EB-NeRD candidate-level feature set (10, incl. session/engagement)
 │
 ├── retrieval/
 │   ├── __init__.py                       — package marker
@@ -129,15 +186,23 @@ multiprocessed). EB-NeRD (`ebnerd_small`) is faster throughout — a
 │   ├── ranking_metrics.py                — AUC/MRR/nDCG@k, per-impression then averaged
 │   ├── beyond_accuracy.py                — intra-list diversity, novelty, train-popularity helper
 │   ├── eval_utils.py                     — recall@K helpers for full-corpus top-k retrieval results
-│   └── bootstrap.py                      — bootstrap 95% CIs (plain mean vs. set-union coverage)
+│   ├── bootstrap.py                      — bootstrap 95% CIs (plain mean, set-union coverage, A2 paired delta)
+│   ├── reranker_scores.py                — A2 Q2: per-impression Assignment-1 retrieval scores as reranker features
+│   ├── reranker_data.py                  — A2 Q2: FEATURE_COLUMNS + chunked/cached feature-table loading
+│   └── reranker_eval.py                  — A2 Q2: shared per-impression AUC/MRR/nDCG evaluation helpers
 │
 ├── scripts/
 │   ├── build_indices.py                  — CLI: fits + persists a BM25F/semantic index once per corpus
 │   ├── tune_bm25.py                      — k1/b grid search via restricted-candidate scoring on a subsample
 │   ├── evaluate_retrieval.py             — full-corpus top-K recall diagnostic (lexical vs. semantic)
 │   ├── evaluate_ranking.py               — restricted-candidate reranking eval (AUC/MRR/nDCG/diversity/...)
-│   ├── generate_predictions.py           — MIND prediction file generation (bm25/semantic/fusion/all), multiprocessed
-│   └── generate_predictions_ebnerd.py    — EB-NeRD prediction file generation (bm25/semantic/both)
+│   ├── generate_predictions.py           — MIND prediction file generation (bm25/semantic/fusion/reranker/all), multiprocessed
+│   ├── generate_predictions_ebnerd.py    — EB-NeRD prediction file generation (bm25/semantic/reranker/both)
+│   ├── build_features.py                 — A2 Q1: builds the candidate-level behavioural feature table
+│   ├── train_reranker.py                 — A2 Q2: trains LGBMRanker, reports before/after AUC/MRR/nDCG
+│   ├── evaluate_reranker.py              — A2 Q2/Q4: extended eval (cold/warm, head/tail, bootstrap CIs)
+│   ├── ablation_reranker.py              — A2 Q3: feature-group ablation study with paired-bootstrap significance
+│   └── benchmark_serving.py              — A2 Q4: index memory + single-request p99 latency + cost/QPS estimate
 │
 └── data/                                 — mostly gitignored (see Data, above); tracked contents:
 ```

@@ -1,7 +1,9 @@
 """Q4.4: bootstrap 95% confidence intervals.
 
-Two variants, because coverage isn't a per-impression scalar you can just
-resample-and-average like AUC/MRR/nDCG/diversity/novelty are:
+Three variants, because coverage isn't a per-impression scalar you can just
+resample-and-average like AUC/MRR/nDCG/diversity/novelty are, and a
+before-vs-after comparison needs the SAME resample applied to both sides
+rather than two independent CIs:
 
   - `bootstrap_ci_mean`: resamples a 1-D array of per-impression metric
     values with replacement and takes percentiles of the resampled means.
@@ -10,6 +12,12 @@ resample-and-average like AUC/MRR/nDCG/diversity/novelty are:
     fancy indexing (not Python sets) so 1000 iterations over ~70K
     impressions stays fast -- see scripts/evaluate_ranking.py for how the
     flattened (impression_owner, item_row) arrays it takes are built.
+  - `bootstrap_ci_paired_delta` (A2 Q3): resamples impression indices ONCE
+    per draw and applies that same resample to both a "before" and "after"
+    per-impression metric array, building a CI on their *difference* --
+    the actual statistical-significance test for "did this change help,"
+    per Q3's "claimed gains must ship a paired bootstrap 95% CI that
+    excludes zero."
 """
 
 import numpy as np
@@ -74,4 +82,50 @@ def bootstrap_ci_coverage(item_owner, item_row, n_impressions, n_docs, n_boot=10
         "note": "point_estimate is coverage on the full evaluated set (the number to report); "
                 "mean/ci_low/ci_high are the with-replacement resampling distribution, which is "
                 "systematically lower -- see docstring.",
+    }
+
+
+def bootstrap_ci_paired_delta(values_before, values_after, n_boot=1000, ci=0.95, random_state=42):
+    """Paired bootstrap on a per-impression metric's improvement
+    (after - before), for the SAME impressions scored both ways -- e.g. is
+    the re-ranker's AUC gain over the fusion-only baseline real, or within
+    noise? Resamples impression INDICES once per draw and applies that
+    same resample to both arrays, rather than two independent
+    `bootstrap_ci_mean` calls on before/after separately -- before/after
+    are correlated (same impression, same labels, same candidate list), so
+    an independent CI on each side would be wider and less informative
+    than the CI on their paired difference.
+
+    NaN handling: an impression with no positive label makes AUC/MRR/nDCG
+    undefined (see ranking_metrics.py), so both `values_before[i]` and
+    `values_after[i]` are NaN there identically (same labels feed both) --
+    such impressions are dropped before resampling, same as
+    `bootstrap_ci_mean` drops NaNs.
+
+    `excludes_zero`: True iff the whole 95% CI is on one side of zero --
+    the standard bootstrap significance criterion, and exactly what Q3
+    asks for ("claimed gains must ship a paired bootstrap 95% CI that
+    excludes zero")."""
+    before = np.asarray(values_before, dtype=float)
+    after = np.asarray(values_after, dtype=float)
+    mask = ~np.isnan(before) & ~np.isnan(after)
+    before, after = before[mask], after[mask]
+    n = len(before)
+    if n == 0:
+        return {"delta": float("nan"), "ci_low": float("nan"), "ci_high": float("nan"),
+                "excludes_zero": False, "n": 0}
+    rng = np.random.default_rng(random_state)
+    boot_deltas = np.empty(n_boot)
+    for b in range(n_boot):
+        idx = rng.integers(0, n, size=n)
+        boot_deltas[b] = after[idx].mean() - before[idx].mean()
+    alpha = (1 - ci) / 2
+    lo, hi = np.quantile(boot_deltas, [alpha, 1 - alpha])
+    point_delta = float(after.mean() - before.mean())
+    return {
+        "delta": point_delta,
+        "ci_low": float(lo),
+        "ci_high": float(hi),
+        "excludes_zero": bool(lo > 0 or hi < 0),
+        "n": int(n),
     }
