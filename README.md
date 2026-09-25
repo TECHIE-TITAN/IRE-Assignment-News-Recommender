@@ -145,6 +145,28 @@ Notes:
   elsewhere (including inside `multiprocessing.Pool` worker `initargs`,
   which unpickle as one ordered tuple).
 
+### NRMS: a neural comparison point (Q3)
+
+A from-scratch (not ported from `ebnerd-benchmark`) small NRMS
+implementation (`retrieval/nrms.py`), trained and compared against the
+GBDT re-ranker and Assignment-1's fusion score, three-way, with paired
+bootstrap CIs on both deltas. Dataset-agnostic (only needs article titles
++ the unified interactions schema), CPU-runnable for a quick correctness
+check, GPU strongly recommended for a real run:
+
+```bash
+# quick local sanity check (CPU, ~seconds) before spending real GPU time:
+python scripts/train_nrms.py --dataset mind --train_sample_size 500 --epochs 1 --eval_limit 500 --device cpu
+
+# real run, e.g. on a SLURM/GPU cluster — see scripts/train_nrms.sbatch for a job template:
+python scripts/train_nrms.py --dataset mind --train_sample_size 200000 --device auto
+python scripts/train_nrms.py --dataset ebnerd --train_sample_size 200000 --device auto
+```
+
+Writes `data/models/<dataset>/nrms.{pt,_vocab.json,_config.json}` and
+`data/reports/<dataset>_nrms_eval.json` (fusion vs. GBDT vs. NRMS, plus
+both paired-delta CIs).
+
 ## Project structure
 
 ```
@@ -189,7 +211,8 @@ Notes:
 │   ├── bootstrap.py                      — bootstrap 95% CIs (plain mean, set-union coverage, A2 paired delta)
 │   ├── reranker_scores.py                — A2 Q2: per-impression Assignment-1 retrieval scores as reranker features
 │   ├── reranker_data.py                  — A2 Q2: FEATURE_COLUMNS + chunked/cached feature-table loading
-│   └── reranker_eval.py                  — A2 Q2: shared per-impression AUC/MRR/nDCG evaluation helpers
+│   ├── reranker_eval.py                  — A2 Q2: shared per-impression AUC/MRR/nDCG evaluation helpers
+│   └── nrms.py                           — A2 Q3: from-scratch NRMS model (news/user encoders, negative sampling)
 │
 ├── scripts/
 │   ├── build_indices.py                  — CLI: fits + persists a BM25F/semantic index once per corpus
@@ -202,7 +225,9 @@ Notes:
 │   ├── train_reranker.py                 — A2 Q2: trains LGBMRanker, reports before/after AUC/MRR/nDCG
 │   ├── evaluate_reranker.py              — A2 Q2/Q4: extended eval (cold/warm, head/tail, bootstrap CIs)
 │   ├── ablation_reranker.py              — A2 Q3: feature-group ablation study with paired-bootstrap significance
-│   └── benchmark_serving.py              — A2 Q4: index memory + single-request p99 latency + cost/QPS estimate
+│   ├── benchmark_serving.py              — A2 Q4: index memory + single-request p99 latency + cost/QPS estimate
+│   ├── train_nrms.py                     — A2 Q3: trains + evaluates NRMS, 3-way vs. fusion/GBDT with paired CIs
+│   └── train_nrms.sbatch                 — SLURM/GPU-cluster job template for train_nrms.py
 │
 └── data/                                 — mostly gitignored (see Data, above); tracked contents:
 ```
